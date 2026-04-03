@@ -77,7 +77,8 @@ export async function fetchFullDB() {
       attempts: rawAttempts.map((a: any) => ({ ...a, answers: JSON.parse(a.answers) })),
       announcements,
       classRequests,
-      cheatLogs
+      cheatLogs,
+      notifications: [],  // In-memory only; initialized fresh each session
     }
   } catch (error: any) {
     return { error: error.message || error.toString() }

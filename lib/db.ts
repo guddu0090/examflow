@@ -6,6 +6,11 @@ import ws from 'ws'
 neonConfig.webSocketConstructor = ws
 
 const prismaClientSingleton = () => {
+  if (process.env.NODE_ENV !== 'production') {
+    // During local 'npm run dev', use the simple Prisma client without the Vercel-specific web sockets
+    return new PrismaClient()
+  }
+
   // Use Vercel's env variable if it exists, otherwise use the proven Neon DB string as a hard fallback
   const connectionString = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_Wn34KQVkSahN@ep-purple-poetry-a1c4s16x.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
   const pool = new Pool({ connectionString })
