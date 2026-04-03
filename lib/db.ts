@@ -1,23 +1,22 @@
 import { PrismaClient } from '@prisma/client'
-import { Pool, neonConfig } from '@neondatabase/serverless'
-import { PrismaNeon } from '@prisma/adapter-neon'
-import ws from 'ws'
 
-neonConfig.webSocketConstructor = ws
+// The Neon connection string - use env var with hardcoded fallback
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_Wn34KQVkSahN@ep-purple-poetry-a1c4s16x.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
 
 const prismaClientSingleton = () => {
   if (process.env.NODE_ENV !== 'production') {
-    // During local 'npm run dev', use the simple Prisma client without the Vercel-specific web sockets
+    // Local dev: standard PrismaClient reads DATABASE_URL from .env automatically
     return new PrismaClient()
   }
 
-  // Use Vercel's env variable if it exists, otherwise use the proven Neon DB string as a hard fallback
-  const connectionString = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_Wn34KQVkSahN@ep-purple-poetry-a1c4s16x.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
-  const pool = new Pool({ connectionString })
-  // Using 'as any' bypasses a known strict TypeScript definition mismatch
-  // between @neondatabase/serverless and @prisma/adapter-neon.
-  const adapter = new PrismaNeon(pool as any)
-  return new PrismaClient({ adapter })
+  // Vercel production: use Neon HTTP driver (simpler and more reliable than WebSockets)
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { neon } = require('@neondatabase/serverless')
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { PrismaNeonHTTP } = require('@prisma/adapter-neon')
+  const sql = neon(DATABASE_URL)
+  const adapter = new PrismaNeonHTTP(sql)
+  return new PrismaClient({ adapter } as any)
 }
 
 declare global {
