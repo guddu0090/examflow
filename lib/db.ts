@@ -7,7 +7,9 @@ neonConfig.webSocketConstructor = ws
 
 const prismaClientSingleton = () => {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
-  const adapter = new PrismaNeon(pool)
+  // Using 'as any' bypasses a known strict TypeScript definition mismatch
+  // between @neondatabase/serverless and @prisma/adapter-neon.
+  const adapter = new PrismaNeon(pool as any)
   return new PrismaClient({ adapter })
 }
 
