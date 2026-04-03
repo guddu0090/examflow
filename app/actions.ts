@@ -10,7 +10,8 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "super-sec
 export async function loginUser(email: any, password: any) {
   const user = await db.user.findUnique({ where: { email }, include: { enrollments: true } })
   if (!user) return { error: "User not found" }
-  if (user.password !== password) return { error: "Invalid password" } 
+  const isValidPassword = await bcrypt.compare(password, user.password)
+  if (!isValidPassword) return { error: "Invalid password" }
   
   const token = await new SignJWT({ id: user.id, role: user.role })
     .setProtectedHeader({ alg: 'HS256' })
@@ -31,11 +32,13 @@ export async function registerUser(data: any) {
   const existing = await db.user.findUnique({ where: { email: data.email } })
   if (existing) return { error: "Email already exists" }
 
+  const hashedPassword = await bcrypt.hash(data.password, 10)
+
   const user = await db.user.create({
     data: {
       name: data.name,
       email: data.email,
-      password: data.password,
+      password: hashedPassword,
       role: data.role,
       teacherStatus: data.role === "teacher" ? "pending" : null,
       subject: data.subject || null,
@@ -50,11 +53,12 @@ export async function fetchFullDB() {
     let users = await db.user.findMany({ include: { enrollments: true } });
 
     if (users.length === 0) {
+      const hashedAdminPassword = await bcrypt.hash("admin", 10)
       const admin = await db.user.create({
         data: {
           name: "Super Admin",
           email: "admin@exam.io",
-          password: "admin",
+          password: hashedAdminPassword,
           role: "superadmin",
           avatar: "SA",
         }

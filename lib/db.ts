@@ -1,12 +1,11 @@
 import { PrismaClient } from '@prisma/client'
 
-// Force-set DATABASE_URL so PrismaClient always has it,
-// even if Vercel's serverless runtime doesn't pass it from env vars.
-if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = "postgresql://neondb_owner:npg_Wn34KQVkSahN@ep-purple-poetry-a1c4s16x.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+const prismaClientSingleton = () => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL environment variable is required')
+  }
+  return new PrismaClient()
 }
-
-const prismaClientSingleton = () => new PrismaClient()
 
 declare global {
   var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>
