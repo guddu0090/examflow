@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          String    // "superadmin" | "teacher" | "student"
+  avatar        String?
+  joinedAt      DateTime  @default(now())
+  
+  // Teacher fields
+  teacherStatus String?   // "pending" | "approved" | "rejected"
+  subject       String?
+  bio           String?
+
+  // Relations
+  taughtClasses Class[]       @relation("ClassTeacher")
+  examsCreated  Exam[]        @relation("ExamCreator")
+  
+  // Student fields
+  enrollments   ClassEnrollment[]
+  
+  attempts      Attempt[]
+  notifications Notification[]
+  classRequests ClassRequest[]
+  cheatLogs     CheatLog[]
+}
+
+model Class {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  
+  teacherId   String
+  teacher     User     @relation("ClassTeacher", fields: [teacherId], references: [id])
+  
+  exams           Exam[]
+  enrollments     ClassEnrollment[]
+  classRequests   ClassRequest[]
+  announcements   Announcement[]
+}
+
+model ClassEnrollment {
+  studentId String
+  classId   String
+  student   User  @relation(fields: [studentId], references: [id])
+  class     Class @relation(fields: [classId], references: [id])
+  @@id([studentId, classId])
+}
+
+model ClassRequest {
+  id          String   @id @default(cuid())
+  studentId   String
+  classId     String
+  status      String   // "pending" | "approved" | "rejected"
+  requestedAt DateTime @default(now())
+  note        String?
+
+  student User  @relation(fields: [studentId], references: [id])
+  class   Class @relation(fields: [classId], references: [id])
+}
+
+model Exam {
+  id              String   @id @default(cuid())
+  title           String
+  subject         String
+  duration        Int      // in seconds
+  totalMarks      Float
+  negativeMarking Boolean  @default(false)
+  passingMarks    Float
+  maxAttempts     Int      @default(1)
+  status          String   @default("active") // "active" | "inactive"
+  createdAt       DateTime @default(now())
+  
+  opensAt         DateTime?
+  closesAt        DateTime?
+
+  teacherId       String
+  teacher         User  @relation("ExamCreator", fields: [teacherId], references: [id])
+  classId         String
+  class           Class @relation(fields: [classId], references: [id])
+
+  questions       Question[]
+  attempts        Attempt[]
+}
+
+model Question {
+  id         String @id @default(cuid())
+  examId     String
+  subject    String
+  text       String?
+  image      String?
+  options    String   // JSON mapped
+  correct    Int      
+  marks      Float  @default(1)
+  negMarks   Float  @default(0.25)
+  difficulty String @default("Medium") // "Easy" | "Medium" | "Hard"
+
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+}
+
+model Attempt {
+  id          String   @id @default(cuid())
+  examId      String
+  userId      String
+  score       Float
+  total       Float
+  correct     Int
+  wrong       Int
+  skipped     Int
+  timeTaken   Int
+  submittedAt DateTime @default(now())
+  answers     String   // JSON mapped
+
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  cheatSummary CheatSummary?
+}
+
+model CheatSummary {
+  id            String  @id @default(cuid())
+  attemptId     String  @unique
+  total         Int     @default(0)
+  high          Int     @default(0)
+  medium        Int     @default(0)
+  low           Int     @default(0)
+  tabSwitch     Int     @default(0)
+  copyText      Int     @default(0)
+  altTab        Int     @default(0)
+  devTools      Int     @default(0)
+  flagged       Boolean @default(false)
+  teacherNote   String?
+  teacherAction String?
+
+  attempt Attempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  logs         CheatLog[]
+  customAlerts CustomAlert[]
+}
+
+model CheatLog {
+  id          String   @id @default(cuid())
+  summaryId   String?
+  studentId   String
+  examId      String
+  type        String
+  detail      String
+  severity    String
+  timestamp   DateTime @default(now())
+  seen        Boolean  @default(false)
+
+  summary CheatSummary? @relation(fields: [summaryId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model CustomAlert {
+  id        String   @id @default(cuid())
+  summaryId String
+  title     String
+  message   String?
+  severity  String
+  addedBy   String
+  addedAt   DateTime @default(now())
+
+  summary CheatSummary @relation(fields: [summaryId], references: [id], onDelete: Cascade)
+}
+
+model Announcement {
+  id        String    @id @default(cuid())
+  classId   String
+  teacherId String 
+  title     String
+  body      String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  link      String
+  createdAt DateTime @default(now())
+  seen      Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
