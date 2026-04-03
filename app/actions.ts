@@ -46,37 +46,41 @@ export async function registerUser(data: any) {
 }
 
 export async function fetchFullDB() {
-  let users = await db.user.findMany({ include: { enrollments: true } });
+  try {
+    let users = await db.user.findMany({ include: { enrollments: true } });
 
-  if (users.length === 0) {
-    const admin = await db.user.create({
-      data: {
-        name: "Super Admin",
-        email: "admin@exam.io",
-        password: "admin",
-        role: "superadmin",
-        avatar: "SA",
-      }
-    });
-    users = [{ ...admin, enrollments: [] }];
-  }
-  const classes = await db.class.findMany();
-  const exams = await db.exam.findMany();
-  const rawQuestions = await db.question.findMany();
-  const rawAttempts = await db.attempt.findMany({ include: { cheatSummary: { include: { logs: true } } } });
-  const announcements = await db.announcement.findMany();
-  const classRequests = await db.classRequest.findMany();
-  const cheatLogs = await db.cheatLog.findMany();
+    if (users.length === 0) {
+      const admin = await db.user.create({
+        data: {
+          name: "Super Admin",
+          email: "admin@exam.io",
+          password: "admin",
+          role: "superadmin",
+          avatar: "SA",
+        }
+      });
+      users = [{ ...admin, enrollments: [] }];
+    }
+    const classes = await db.class.findMany();
+    const exams = await db.exam.findMany();
+    const rawQuestions = await db.question.findMany();
+    const rawAttempts = await db.attempt.findMany({ include: { cheatSummary: { include: { logs: true } } } });
+    const announcements = await db.announcement.findMany();
+    const classRequests = await db.classRequest.findMany();
+    const cheatLogs = await db.cheatLog.findMany();
 
-  return {
-    users: users.map((u: any) => ({ ...u, classIds: u.enrollments.map((e: any)=>e.classId) })),
-    classes,
-    exams,
-    questions: rawQuestions.map((q: any) => ({ ...q, options: JSON.parse(q.options) })),
-    attempts: rawAttempts.map((a: any) => ({ ...a, answers: JSON.parse(a.answers) })),
-    announcements,
-    classRequests,
-    cheatLogs
+    return {
+      users: users.map((u: any) => ({ ...u, classIds: u.enrollments?.map((e: any)=>e.classId) || [] })),
+      classes,
+      exams,
+      questions: rawQuestions.map((q: any) => ({ ...q, options: JSON.parse(q.options) })),
+      attempts: rawAttempts.map((a: any) => ({ ...a, answers: JSON.parse(a.answers) })),
+      announcements,
+      classRequests,
+      cheatLogs
+    }
+  } catch (error: any) {
+    return { error: error.message || error.toString() }
   }
 }
 

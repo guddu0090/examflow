@@ -60,11 +60,17 @@ export default function AppWrapper() {
 
   useEffect(() => {
     fetchFullDB().then(db => {
-      runtimeDB = db;
+      if (db.error) {
+        console.error("Backend DB Error:", db.error);
+        runtimeDB = { ...runtimeDB, error: db.error };
+      } else {
+        runtimeDB = db;
+      }
       setLoaded(true);
     }).catch(e => {
        console.error(e);
-       setLoaded(true); // fall back to empty
+       runtimeDB = { ...runtimeDB, error: e.toString() };
+       setLoaded(true); // fall back
     });
   }, []);
   
@@ -82,6 +88,12 @@ export default function AppWrapper() {
   }, [loaded]);
 
   if (!loaded) return <div style={{background:"#0a0f1e", height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff"}}>Loading ExamFlow from Postgres / SQLite...</div>;
+  if (runtimeDB.error) return (
+    <div style={{background:"#0a0f1e", height:"100vh", padding: 40, color:"#ef4444", fontFamily: "sans-serif"}}>
+      <h2>Database Error</h2>
+      <pre style={{ background:"rgba(239,68,68,0.1)", padding: 20, whiteSpace:"pre-wrap", borderRadius: 8 }}>{runtimeDB.error}</pre>
+    </div>
+  );
   return <App />;
 }
 
